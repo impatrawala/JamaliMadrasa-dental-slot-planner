@@ -135,13 +135,17 @@
 
     elements.copyBtn.addEventListener("click", copySchedule);
 
-    elements.resetBtn.addEventListener("click", () => {
-      if (!window.confirm("Reset all class counts and timing settings?")) return;
-      Object.assign(state, clone(defaultSchedule));
+    elements.resetBtn.addEventListener("click", async () => {
+      if (!window.confirm("Reset this device back to the published shared schedule?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      const loadedSharedSchedule = await loadSharedSchedule();
+      if (!loadedSharedSchedule) {
+        Object.assign(state, clone(defaultSchedule));
+      }
       reflowClassStarts();
       persist();
       renderAll();
-      showToast("Planner reset.");
+      showToast(loadedSharedSchedule ? "Shared schedule loaded." : "Planner reset.");
     });
   }
 
@@ -156,17 +160,18 @@
   }
 
   async function loadState() {
-    if (await loadSharedSchedule()) return;
-
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-
-    try {
-      const parsed = JSON.parse(stored);
-      applyScheduleData(parsed);
-    } catch (error) {
-      console.warn("Saved planner data could not be read.", error);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        applyScheduleData(parsed);
+        return;
+      } catch (error) {
+        console.warn("Saved planner data could not be read.", error);
+      }
     }
+
+    if (await loadSharedSchedule()) persist();
   }
 
   async function loadSharedSchedule() {
