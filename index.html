@@ -15,19 +15,49 @@
           <h1>Dental Slot Planner</h1>
         </div>
       </div>
-      <div class="top-actions">
-        <button id="addClassBtn" class="secondary">Add class</button>
-        <button id="resetBtn">Reset planner</button>
-      </div>
     </header>
 
     <main>
-      <section class="band controls-band" aria-labelledby="controlsTitle">
+      <nav class="tabs" aria-label="Planner sections">
+        <button class="tab-button active" type="button" data-tab="preview">Preview</button>
+        <button class="tab-button" type="button" data-tab="classes">Classes</button>
+        <button class="tab-button" type="button" data-tab="settings">Settings</button>
+      </nav>
+
+      <section class="tab-panel active" data-panel="preview" aria-labelledby="previewTitle">
+        <section id="metrics" class="metric-strip" aria-label="Schedule summary"></section>
+
+        <section class="band preview-band">
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Schedule preview</p>
+              <h2 id="previewTitle">Share the class timing plan without exposing student records.</h2>
+            </div>
+          </div>
+          <div class="timeline" aria-label="Class schedule timeline">
+            <div id="timelineBlocks"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="classes" aria-labelledby="classesTitle">
+      <section class="band controls-band" aria-labelledby="classesTitle">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Planner only</p>
-            <h2 id="controlsTitle">Set class counts, slot lengths, breaks, and start times without storing student records.</h2>
+            <h2 id="classesTitle">Add classes manually or upload a spreadsheet to create class counts.</h2>
           </div>
+        </div>
+
+        <div class="upload-box">
+          <div>
+            <h3>Upload Excel or CSV</h3>
+            <p>Only class names and counts are imported. Student names and other details are ignored.</p>
+          </div>
+          <label class="file-button">
+            Upload file
+            <input id="importInput" type="file" accept=".xlsx,.xls,.csv,.tsv,.txt">
+          </label>
         </div>
 
         <form id="addClassForm" class="add-class-form">
@@ -43,17 +73,41 @@
         </form>
       </section>
 
-      <section id="metrics" class="metric-strip" aria-label="Schedule summary"></section>
-
-      <section class="band scheduler-band" aria-labelledby="scheduleTitle">
+      <section class="band class-list-band" aria-labelledby="classListTitle">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Class-wise slots</p>
-            <h2 id="scheduleTitle">Customize the order, count, start time, slot length, students per slot, and break after each class.</h2>
+            <h2 id="classListTitle">Adjust each class count and timing.</h2>
           </div>
-          <div class="schedule-actions">
-            <button id="reflowBtn" class="secondary">Auto-fill start times</button>
-            <button id="copyBtn">Copy schedule</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="class-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Class</th>
+                <th>Students</th>
+                <th>Start</th>
+                <th>Slot min</th>
+                <th>Per slot</th>
+                <th>Break</th>
+                <th>Use</th>
+                <th>Remove</th>
+              </tr>
+            </thead>
+            <tbody id="classConfigBody"></tbody>
+          </table>
+        </div>
+      </section>
+      </section>
+
+      <section class="tab-panel" data-panel="settings" aria-labelledby="settingsTitle">
+      <section class="band scheduler-band" aria-labelledby="settingsTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Defaults</p>
+            <h2 id="settingsTitle">Set the starting time and default timing rules.</h2>
           </div>
         </div>
 
@@ -80,35 +134,18 @@
           </label>
         </form>
 
-        <div class="schedule-layout">
-          <div class="table-wrap">
-            <table class="class-table">
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Class</th>
-                  <th>Students</th>
-                  <th>Start</th>
-                  <th>Slot min</th>
-                  <th>Per slot</th>
-                  <th>Break</th>
-                  <th>Use</th>
-                  <th>Remove</th>
-                </tr>
-              </thead>
-              <tbody id="classConfigBody"></tbody>
-            </table>
-          </div>
-          <aside class="timeline" aria-label="Class schedule timeline">
-            <h3>Schedule preview</h3>
-            <div id="timelineBlocks"></div>
-          </aside>
+        <div class="settings-actions">
+          <button id="reflowBtn" class="secondary" type="button">Auto-fill start times</button>
+          <button id="copyBtn" type="button">Copy schedule</button>
+          <button id="resetBtn" class="danger" type="button">Reset planner</button>
         </div>
+      </section>
       </section>
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

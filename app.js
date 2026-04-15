@@ -34,7 +34,6 @@
 
   function cacheElements() {
     [
-      "addClassBtn",
       "addClassForm",
       "checkupDate",
       "classConfigBody",
@@ -44,6 +43,7 @@
       "globalScheduleForm",
       "globalSlot",
       "globalStart",
+      "importInput",
       "metrics",
       "newClassCount",
       "newClassName",
@@ -57,12 +57,16 @@
   }
 
   function bindEvents() {
-    elements.addClassBtn.addEventListener("click", () => elements.newClassName.focus());
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => showTab(button.dataset.tab));
+    });
 
     elements.addClassForm.addEventListener("submit", (event) => {
       event.preventDefault();
       addClass(elements.newClassName.value, elements.newClassCount.value);
     });
+
+    elements.importInput.addEventListener("change", importScheduleFile);
 
     elements.globalScheduleForm.addEventListener("change", () => {
       const previousGlobal = { ...state.global };
@@ -133,6 +137,16 @@
       persist();
       renderAll();
       showToast("Planner reset.");
+    });
+  }
+
+  function showTab(tabName) {
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.classList.toggle("active", button.dataset.tab === tabName);
+    });
+
+    document.querySelectorAll("[data-panel]").forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.panel === tabName);
     });
   }
 
@@ -273,6 +287,128 @@
     showToast(`${className} added.`);
   }
 
+  async function importScheduleFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const rows = await readRowsFromFile(file);
+      const importedClasses = rowsToClasses(rows);
+      if (!importedClasses.length) {
+        showToast("No class column was found in that file.");
+        return;
+      }
+
+      if (!window.confirm(`Replace current classes with ${importedClasses.length} imported classes?`)) {
+        return;
+      }
+
+      state.classes = importedClasses;
+      reflowClassStarts();
+      persist();
+      renderAll();
+      showTab("preview");
+      showToast("Schedule created from upload.");
+    } catch (error) {
+      console.error(error);
+      showToast("Upload failed. Try exporting the sheet as CSV.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function readRowsFromFile(file) {
+    const extension = file.name.split(".").pop().toLowerCase();
+
+    if (extension === "xlsx" || extension === "xls") {
+      if (!window.XLSX) {
+        throw new Error("Excel parser is not loaded.");
+      }
+
+      const data = await file.arrayBuffer();
+      const workbook = window.XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      return window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    }
+
+    const text = await file.text();
+    return parseDelimitedRows(text);
+  }
+
+  function parseDelimitedRows(text) {
+    const normalizedText = text.replace(/\r/g, "").trim();
+    if (!normalizedText) return [];
+
+    const delimiter = normalizedText.includes("\t") ? "\t" : ",";
+    const lines = normalizedText.split("\n").filter(Boolean);
+    const headers = splitDelimitedLine(lines.shift(), delimiter);
+
+    return lines.map((line) => {
+      const values = splitDelimitedLine(line, delimiter);
+      return headers.reduce((row, header, index) => {
+        row[header] = values[index] || "";
+        return row;
+      }, {});
+    });
+  }
+
+  function splitDelimitedLine(line, delimiter) {
+    const cells = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
+      const next = line[index + 1];
+
+      if (character === '"' && next === '"') {
+        current += '"';
+        index += 1;
+      } else if (character === '"') {
+        inQuotes = !inQuotes;
+      } else if (character === delimiter && !inQuotes) {
+        cells.push(current);
+        current = "";
+      } else {
+        current += character;
+      }
+    }
+
+    cells.push(current);
+    return cells.map((cell) => cell.trim());
+  }
+
+  function rowsToClasses(rows) {
+    if (!rows.length) return [];
+
+    const headers = Object.keys(rows[0]);
+    const classKey = findColumn(headers, ["class/level", "class level", "class", "level", "grade"]);
+    const countKey = findColumn(headers, ["students", "student count", "count", "total", "number of students"]);
+    if (!classKey) return [];
+
+    const classCounts = new Map();
+
+    rows.forEach((row) => {
+      const className = normalizeSpace(row[classKey]);
+      if (!className) return;
+
+      const explicitCount = countKey ? Number(row[countKey]) : NaN;
+      const current = classCounts.get(className) || 0;
+      classCounts.set(className, current + (Number.isFinite(explicitCount) && explicitCount > 0 ? Math.floor(explicitCount) : 1));
+    });
+
+    return [...classCounts.entries()]
+      .sort(([a], [b]) => compareClassNames(a, b))
+      .map(([name, count]) => makeClass(name, count));
+  }
+
+  function findColumn(headers, candidates) {
+    return headers.find((header) => {
+      const cleaned = cleanColumnName(header);
+      return candidates.some((candidate) => cleaned === cleanColumnName(candidate) || cleaned.includes(cleanColumnName(candidate)));
+    });
+  }
+
   function removeClass(id) {
     const classItem = getClass(id);
     if (!classItem) return;
@@ -384,6 +520,20 @@
     return state.classes.find((classItem) => classItem.id === id);
   }
 
+  function compareClassNames(a, b) {
+    const rankA = classRank(a);
+    const rankB = classRank(b);
+    return rankA - rankB || a.localeCompare(b);
+  }
+
+  function classRank(className) {
+    const lower = className.toLowerCase();
+    if (lower.startsWith("jkg")) return 0;
+    if (lower.startsWith("skg")) return 1;
+    const grade = Number((className.match(/^\d+/) || [99])[0]);
+    return Number.isFinite(grade) ? grade + 1 : 99;
+  }
+
   function makeClass(name, studentCount) {
     return normalizeClass({
       id: `class-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -441,6 +591,10 @@
 
   function normalizeSpace(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function cleanColumnName(value) {
+    return normalizeSpace(value).toLowerCase().replace(/[:#]/g, "");
   }
 
   function clone(value) {

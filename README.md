@@ -13,6 +13,8 @@ The app stores only class-level planning details in the browser:
 
 It does not store student names, parent contact details, consent details, medical notes, allergy notes, or checkup records.
 
+Excel, CSV, TSV, and text uploads are parsed locally in the browser. The planner imports only class names and class counts; student-level columns are ignored.
+
 ## GitHub Pages
 
 This folder is ready to publish as a static GitHub Pages site. The entry point is `index.html`, with styling in `styles.css` and app logic in `app.js`.
