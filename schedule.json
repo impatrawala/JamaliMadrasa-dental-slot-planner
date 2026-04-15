@@ -1,6 +1,8 @@
 {
   "version": 1,
   "updatedAt": "2026-04-15",
+  "source": "Dental Screening - Jamali Madrasa Mississauga (Responses).xlsx",
+  "countRule": "Consent must be Yes; only class-level counts are published.",
   "global": {
     "checkupDate": "2026-04-15",
     "startTime": "09:00",
@@ -12,7 +14,7 @@
     {
       "id": "class-jkg-atfaal",
       "name": "JKG - Atfaal",
-      "studentCount": 0,
+      "studentCount": 17,
       "enabled": true,
       "startTime": "09:00",
       "slotMinutes": 5,
@@ -22,9 +24,9 @@
     {
       "id": "class-skg-ibtidiyyah-a",
       "name": "SKG - Ibtidiyyah - A",
-      "studentCount": 0,
+      "studentCount": 9,
       "enabled": true,
-      "startTime": "09:05",
+      "startTime": "10:30",
       "slotMinutes": 5,
       "capacity": 1,
       "breakMinutes": 5
@@ -32,9 +34,139 @@
     {
       "id": "class-skg-ibtidiyyah-b",
       "name": "SKG - Ibtidiyyah - B",
-      "studentCount": 0,
+      "studentCount": 5,
       "enabled": true,
-      "startTime": "09:10",
+      "startTime": "11:20",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-1-awwalah-a",
+      "name": "1 - Awwalah - A",
+      "studentCount": 6,
+      "enabled": true,
+      "startTime": "11:50",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-1-awwalah-b",
+      "name": "1 - Awwalah - B",
+      "studentCount": 2,
+      "enabled": true,
+      "startTime": "12:25",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-2-saaniyah-a",
+      "name": "2 - Saaniyah - A",
+      "studentCount": 3,
+      "enabled": true,
+      "startTime": "12:40",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-2-saaniyah-b",
+      "name": "2 - Saaniyah - B",
+      "studentCount": 6,
+      "enabled": true,
+      "startTime": "13:00",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-3-saalisah",
+      "name": "3 - Saalisah",
+      "studentCount": 11,
+      "enabled": true,
+      "startTime": "13:35",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-4-rabiyah-a",
+      "name": "4 - Rabiyah - A",
+      "studentCount": 4,
+      "enabled": true,
+      "startTime": "14:35",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-4-rabiyah-b",
+      "name": "4 - Rabiyah - B",
+      "studentCount": 4,
+      "enabled": true,
+      "startTime": "15:00",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-5-khamesah",
+      "name": "5 - Khamesah",
+      "studentCount": 10,
+      "enabled": true,
+      "startTime": "15:25",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-6-saadesah-a",
+      "name": "6 - Saadesah - A",
+      "studentCount": 5,
+      "enabled": true,
+      "startTime": "16:20",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-6-saadesah-b",
+      "name": "6 - Saadesah - B",
+      "studentCount": 5,
+      "enabled": true,
+      "startTime": "16:50",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-7-saabea",
+      "name": "7 - Saabea",
+      "studentCount": 5,
+      "enabled": true,
+      "startTime": "17:20",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-8-samenah",
+      "name": "8 - Samenah",
+      "studentCount": 7,
+      "enabled": true,
+      "startTime": "17:50",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-9-taseah",
+      "name": "9 - Taseah",
+      "studentCount": 8,
+      "enabled": true,
+      "startTime": "18:30",
       "slotMinutes": 5,
       "capacity": 1,
       "breakMinutes": 5
