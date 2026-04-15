@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "updatedAt": "2026-04-15",
+  "global": {
+    "checkupDate": "2026-04-15",
+    "startTime": "09:00",
+    "slotMinutes": 5,
+    "capacity": 1,
+    "breakMinutes": 5
+  },
+  "classes": [
+    {
+      "id": "class-jkg-atfaal",
+      "name": "JKG - Atfaal",
+      "studentCount": 0,
+      "enabled": true,
+      "startTime": "09:00",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-skg-ibtidiyyah-a",
+      "name": "SKG - Ibtidiyyah - A",
+      "studentCount": 0,
+      "enabled": true,
+      "startTime": "09:05",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    },
+    {
+      "id": "class-skg-ibtidiyyah-b",
+      "name": "SKG - Ibtidiyyah - B",
+      "studentCount": 0,
+      "enabled": true,
+      "startTime": "09:10",
+      "slotMinutes": 5,
+      "capacity": 1,
+      "breakMinutes": 5
+    }
+  ]
+}

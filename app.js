@@ -1,6 +1,7 @@
 (function () {
   const STORAGE_KEY = "dental-slot-planner:v2";
   const LEGACY_RECORD_KEYS = ["dental-checkup-tracker:v1"];
+  const SHARED_SCHEDULE_URL = "schedule.json";
   const BASE_GLOBAL = {
     checkupDate: new Date().toISOString().slice(0, 10),
     startTime: "09:00",
@@ -23,11 +24,11 @@
 
   document.addEventListener("DOMContentLoaded", init);
 
-  function init() {
+  async function init() {
     cacheElements();
     bindEvents();
     purgeLegacyStudentRecords();
-    loadState();
+    await loadState();
     reflowClassStarts();
     renderAll();
   }
@@ -154,19 +155,38 @@
     });
   }
 
-  function loadState() {
+  async function loadState() {
+    if (await loadSharedSchedule()) return;
+
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return;
 
     try {
       const parsed = JSON.parse(stored);
-      state.global = { ...state.global, ...(parsed.global || {}) };
-      state.classes = Array.isArray(parsed.classes)
-        ? parsed.classes.map(normalizeClass)
-        : state.classes;
+      applyScheduleData(parsed);
     } catch (error) {
       console.warn("Saved planner data could not be read.", error);
     }
+  }
+
+  async function loadSharedSchedule() {
+    try {
+      const response = await fetch(`${SHARED_SCHEDULE_URL}?v=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) return false;
+      const parsed = await response.json();
+      applyScheduleData(parsed);
+      return true;
+    } catch (error) {
+      console.warn("Shared schedule could not be loaded.", error);
+      return false;
+    }
+  }
+
+  function applyScheduleData(data) {
+    state.global = { ...state.global, ...(data.global || {}) };
+    state.classes = Array.isArray(data.classes) && data.classes.length
+      ? data.classes.map(normalizeClass)
+      : state.classes;
   }
 
   function purgeLegacyStudentRecords() {
