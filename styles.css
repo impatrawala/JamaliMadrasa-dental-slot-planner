@@ -581,32 +581,58 @@ dialog::backdrop {
 @media (max-width: 620px) {
   .topbar,
   main {
-    padding: 14px;
+    padding: 10px;
+  }
+
+  main {
+    gap: 10px;
+  }
+
+  .topbar {
+    gap: 10px;
+    position: static;
   }
 
   .brand {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .brand img {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
   }
 
   h1 {
-    font-size: 1.45rem;
+    font-size: 1.28rem;
   }
 
   h2 {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .filters,
   .global-schedule,
   .add-class-form,
-  .metric-strip,
   .dialog-grid {
     grid-template-columns: 1fr;
+  }
+
+  .metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric {
+    min-height: 68px;
+    padding: 10px;
+  }
+
+  .metric strong {
+    font-size: 1.25rem;
+  }
+
+  .metric span {
+    font-size: 0.78rem;
   }
 
   .top-actions,
@@ -623,23 +649,113 @@ dialog::backdrop {
   }
 
   .band {
-    padding: 14px;
-  }
-
-  .class-table tbody {
-    gap: 10px;
-  }
-
-  .class-table tr {
-    grid-template-columns: 1fr;
     padding: 12px;
   }
 
+  .section-heading {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  label {
+    gap: 4px;
+    font-size: 0.82rem;
+  }
+
+  input,
+  select,
+  textarea,
+  button,
+  .file-button {
+    min-height: 46px;
+  }
+
+  .class-table tbody {
+    gap: 12px;
+  }
+
+  .class-table tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .class-table td:nth-child(1),
+  .class-table td:nth-child(2),
+  .class-table td:nth-child(9) {
+    grid-column: 1 / -1;
+  }
+
+  .class-table td:nth-child(2) {
+    order: 1;
+  }
+
+  .class-table td:nth-child(3) {
+    order: 2;
+  }
+
+  .class-table td:nth-child(4) {
+    order: 3;
+  }
+
+  .class-table td:nth-child(5) {
+    order: 4;
+  }
+
+  .class-table td:nth-child(6) {
+    order: 5;
+  }
+
+  .class-table td:nth-child(7) {
+    order: 6;
+  }
+
+  .class-table td:nth-child(8) {
+    order: 7;
+  }
+
   .class-table td:nth-child(1) {
+    order: 8;
     grid-template-columns: 1fr;
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
+    padding-top: 10px;
+    padding-bottom: 0;
+  }
+
+  .class-table td:nth-child(9) {
+    order: 9;
+  }
+
+  .class-table td::before {
+    font-size: 0.7rem;
   }
 
   .class-table td:nth-child(1)::before {
+    content: "Move class";
     margin-right: 0;
+  }
+
+  .class-name-cell input {
+    font-weight: 800;
+  }
+
+  .compact-field input {
+    text-align: center;
+  }
+
+  .order-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+  }
+
+  .timeline {
+    padding: 12px;
+  }
+
+  .timeline-block {
+    margin-bottom: 8px;
+    padding: 9px;
   }
 }

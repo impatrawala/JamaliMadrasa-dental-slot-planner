@@ -189,9 +189,9 @@
     const metrics = [
       ["Classes", enabledClasses.length],
       ["Students", students],
-      ["Total slots", slots],
-      ["First start", state.global.startTime],
-      ["Estimated finish", endTime],
+      ["Slots", slots],
+      ["Start", state.global.startTime],
+      ["Finish", endTime],
     ];
 
     elements.metrics.innerHTML = metrics
@@ -212,19 +212,19 @@
           <td data-label="Class" class="class-name-cell">
             <input value="${escapeAttr(classItem.name)}" data-id="${escapeAttr(classItem.id)}" data-field="name" aria-label="Class name">
           </td>
-          <td data-label="Students" class="class-inputs">
+          <td data-label="Students" class="class-inputs compact-field">
             <input type="number" min="0" max="300" value="${classItem.studentCount}" data-id="${escapeAttr(classItem.id)}" data-field="studentCount" aria-label="Student count">
           </td>
-          <td data-label="Start" class="class-inputs">
+          <td data-label="Start" class="class-inputs compact-field">
             <input type="time" value="${escapeAttr(classItem.startTime)}" data-id="${escapeAttr(classItem.id)}" data-field="startTime" aria-label="Start time">
           </td>
-          <td data-label="Slot" class="class-inputs">
+          <td data-label="Slot min" class="class-inputs compact-field">
             <input type="number" min="1" max="60" value="${classItem.slotMinutes}" data-id="${escapeAttr(classItem.id)}" data-field="slotMinutes" aria-label="Slot minutes">
           </td>
-          <td data-label="Per slot" class="class-inputs">
+          <td data-label="Per slot" class="class-inputs compact-field">
             <input type="number" min="1" max="50" value="${classItem.capacity}" data-id="${escapeAttr(classItem.id)}" data-field="capacity" aria-label="Students per slot">
           </td>
-          <td data-label="Break" class="class-inputs">
+          <td data-label="Break" class="class-inputs compact-field">
             <input type="number" min="0" max="120" value="${classItem.breakMinutes}" data-id="${escapeAttr(classItem.id)}" data-field="breakMinutes" aria-label="Break after class">
           </td>
           <td data-label="Use">
