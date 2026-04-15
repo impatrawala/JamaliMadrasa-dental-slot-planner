@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dental Slot Planner</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/dental-check.svg" alt="Dental checkup mark" width="64" height="64">
+        <div>
+          <p class="eyebrow">Jamali Madrasa</p>
+          <h1>Dental Slot Planner</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="addClassBtn" class="secondary">Add class</button>
+        <button id="resetBtn">Reset planner</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="band controls-band" aria-labelledby="controlsTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Planner only</p>
+            <h2 id="controlsTitle">Set class counts, slot lengths, breaks, and start times without storing student records.</h2>
+          </div>
+        </div>
+
+        <form id="addClassForm" class="add-class-form">
+          <label>
+            Class name
+            <input id="newClassName" placeholder="Example: 2 - Saaniyah - A" required>
+          </label>
+          <label>
+            Students in class
+            <input id="newClassCount" type="number" min="0" max="300" value="0" required>
+          </label>
+          <button type="submit">Add class</button>
+        </form>
+      </section>
+
+      <section id="metrics" class="metric-strip" aria-label="Schedule summary"></section>
+
+      <section class="band scheduler-band" aria-labelledby="scheduleTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Class-wise slots</p>
+            <h2 id="scheduleTitle">Customize the order, count, start time, slot length, students per slot, and break after each class.</h2>
+          </div>
+          <div class="schedule-actions">
+            <button id="reflowBtn" class="secondary">Auto-fill start times</button>
+            <button id="copyBtn">Copy schedule</button>
+          </div>
+        </div>
+
+        <form id="globalScheduleForm" class="global-schedule">
+          <label>
+            Checkup date
+            <input id="checkupDate" type="date">
+          </label>
+          <label>
+            First class starts
+            <input id="globalStart" type="time">
+          </label>
+          <label>
+            Default slot minutes
+            <input id="globalSlot" type="number" min="1" max="60">
+          </label>
+          <label>
+            Students per slot
+            <input id="globalCapacity" type="number" min="1" max="50">
+          </label>
+          <label>
+            Break after class
+            <input id="globalBreak" type="number" min="0" max="120">
+          </label>
+        </form>
+
+        <div class="schedule-layout">
+          <div class="table-wrap">
+            <table class="class-table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Class</th>
+                  <th>Students</th>
+                  <th>Start</th>
+                  <th>Slot</th>
+                  <th>Per slot</th>
+                  <th>Break</th>
+                  <th>Use</th>
+                  <th>Remove</th>
+                </tr>
+              </thead>
+              <tbody id="classConfigBody"></tbody>
+            </table>
+          </div>
+          <aside class="timeline" aria-label="Class schedule timeline">
+            <h3>Schedule preview</h3>
+            <div id="timelineBlocks"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
