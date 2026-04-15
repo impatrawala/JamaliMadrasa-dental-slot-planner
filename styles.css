@@ -473,6 +473,10 @@ tbody tr:last-child td {
   margin-top: 16px;
 }
 
+.settings-actions .file-button {
+  width: auto;
+}
+
 .empty-state {
   padding: 32px;
   color: var(--muted);

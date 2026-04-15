@@ -38,6 +38,7 @@
       "checkupDate",
       "classConfigBody",
       "copyBtn",
+      "exportPlannerBtn",
       "globalBreak",
       "globalCapacity",
       "globalScheduleForm",
@@ -47,6 +48,7 @@
       "metrics",
       "newClassCount",
       "newClassName",
+      "plannerImportInput",
       "reflowBtn",
       "resetBtn",
       "timelineBlocks",
@@ -67,6 +69,8 @@
     });
 
     elements.importInput.addEventListener("change", importScheduleFile);
+    elements.exportPlannerBtn.addEventListener("click", exportPlannerFile);
+    elements.plannerImportInput.addEventListener("change", importPlannerFile);
 
     elements.globalScheduleForm.addEventListener("change", () => {
       const previousGlobal = { ...state.global };
@@ -513,6 +517,53 @@
     } catch (error) {
       console.warn("Clipboard copy failed.", error);
       showToast("Copy failed. Select the schedule preview manually.");
+    }
+  }
+
+  function exportPlannerFile() {
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      global: state.global,
+      classes: state.classes,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `jamali-dental-planner-${state.global.checkupDate || new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importPlannerFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const parsed = JSON.parse(await file.text());
+      const importedClasses = Array.isArray(parsed.classes) ? parsed.classes.map(normalizeClass) : [];
+      if (!importedClasses.length) {
+        showToast("That planner file has no classes.");
+        return;
+      }
+
+      if (!window.confirm(`Load ${importedClasses.length} classes from this planner file?`)) {
+        return;
+      }
+
+      state.global = { ...state.global, ...(parsed.global || {}) };
+      state.classes = importedClasses;
+      reflowClassStarts();
+      persist();
+      renderAll();
+      showTab("preview");
+      showToast("Planner imported.");
+    } catch (error) {
+      console.error(error);
+      showToast("Planner import failed. Use a planner JSON export.");
+    } finally {
+      event.target.value = "";
     }
   }
 
