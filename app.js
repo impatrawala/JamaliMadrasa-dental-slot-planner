@@ -2,6 +2,16 @@
   const STORAGE_KEY = "dental-slot-planner:v2";
   const LEGACY_RECORD_KEYS = ["dental-checkup-tracker:v1"];
   const SHARED_SCHEDULE_URL = "schedule.json";
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDP4uQz2si9gKLr4nQJl3AOpQKNl4QMn_U",
+    authDomain: "jamali-madrasa-dental-planner.firebaseapp.com",
+    databaseURL: "https://jamali-madrasa-dental-planner-default-rtdb.firebaseio.com/",
+    projectId: "jamali-madrasa-dental-planner",
+    storageBucket: "jamali-madrasa-dental-planner.firebasestorage.app",
+    messagingSenderId: "929701254374",
+    appId: "1:929701254374:web:e462287271a22ce5075727",
+  };
+  const FIREBASE_SCHEDULE_PATH = "schedule";
   const BASE_GLOBAL = {
     checkupDate: new Date().toISOString().slice(0, 10),
     startTime: "09:00",
@@ -21,6 +31,9 @@
 
   const state = clone(defaultSchedule);
   const elements = {};
+  let scheduleRef = null;
+  let applyingRemoteSchedule = false;
+  let saveTimer = null;
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -28,9 +41,10 @@
     cacheElements();
     bindEvents();
     purgeLegacyStudentRecords();
+    setupFirebase();
     await loadState();
-    reflowClassStarts();
     renderAll();
+    subscribeToSharedSchedule();
   }
 
   function cacheElements() {
@@ -138,11 +152,10 @@
     elements.resetBtn.addEventListener("click", async () => {
       if (!window.confirm("Reset this device back to the published shared schedule?")) return;
       localStorage.removeItem(STORAGE_KEY);
-      const loadedSharedSchedule = await loadSharedSchedule();
+      const loadedSharedSchedule = await loadPublishedSchedule();
       if (!loadedSharedSchedule) {
         Object.assign(state, clone(defaultSchedule));
       }
-      reflowClassStarts();
       persist();
       renderAll();
       showToast(loadedSharedSchedule ? "Shared schedule loaded." : "Planner reset.");
@@ -160,21 +173,64 @@
   }
 
   async function loadState() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    if (scheduleRef) {
       try {
-        const parsed = JSON.parse(stored);
-        applyScheduleData(parsed);
-        return;
+        const snapshot = await scheduleRef.once("value");
+        if (snapshot.exists()) {
+          applyScheduleData(snapshot.val());
+          return;
+        }
+
+        if (await loadPublishedSchedule()) {
+          saveSharedSchedule();
+          return;
+        }
       } catch (error) {
-        console.warn("Saved planner data could not be read.", error);
+        console.warn("Firebase schedule could not be loaded.", error);
       }
     }
 
-    if (await loadSharedSchedule()) persist();
+    if (await loadPublishedSchedule()) {
+      persistLocal();
+      return;
+    }
+
+    loadLocalSchedule();
   }
 
-  async function loadSharedSchedule() {
+  function setupFirebase() {
+    if (!window.firebase?.initializeApp || !window.firebase?.database) {
+      console.warn("Firebase SDK is not available; using local fallback.");
+      return;
+    }
+
+    try {
+      const app = window.firebase.apps?.length
+        ? window.firebase.app()
+        : window.firebase.initializeApp(FIREBASE_CONFIG);
+      scheduleRef = window.firebase.database(app).ref(FIREBASE_SCHEDULE_PATH);
+    } catch (error) {
+      console.warn("Firebase could not be initialized.", error);
+      scheduleRef = null;
+    }
+  }
+
+  function subscribeToSharedSchedule() {
+    if (!scheduleRef) return;
+
+    scheduleRef.on("value", (snapshot) => {
+      if (!snapshot.exists()) return;
+      applyingRemoteSchedule = true;
+      applyScheduleData(snapshot.val());
+      persistLocal();
+      renderAll();
+      applyingRemoteSchedule = false;
+    }, (error) => {
+      console.warn("Firebase realtime updates failed.", error);
+    });
+  }
+
+  async function loadPublishedSchedule() {
     try {
       const response = await fetch(`${SHARED_SCHEDULE_URL}?v=${Date.now()}`, { cache: "no-store" });
       if (!response.ok) return false;
@@ -199,6 +255,11 @@
   }
 
   function persist() {
+    persistLocal();
+    saveSharedScheduleDebounced();
+  }
+
+  function persistLocal() {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -206,6 +267,39 @@
         classes: state.classes,
       })
     );
+  }
+
+  function loadLocalSchedule() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return false;
+
+    try {
+      applyScheduleData(JSON.parse(stored));
+      return true;
+    } catch (error) {
+      console.warn("Saved planner data could not be read.", error);
+      return false;
+    }
+  }
+
+  function saveSharedScheduleDebounced() {
+    if (applyingRemoteSchedule || !scheduleRef) return;
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(saveSharedSchedule, 250);
+  }
+
+  function saveSharedSchedule() {
+    if (applyingRemoteSchedule || !scheduleRef) return;
+
+    scheduleRef.set({
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      global: state.global,
+      classes: state.classes,
+    }).catch((error) => {
+      console.warn("Shared schedule could not be saved.", error);
+      showToast("Could not save shared schedule. Check Firebase rules.");
+    });
   }
 
   function renderAll() {

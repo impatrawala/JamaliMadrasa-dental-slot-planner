@@ -15,7 +15,7 @@ It does not store student names, parent contact details, consent details, medica
 
 Excel, CSV, TSV, and text uploads are parsed locally in the browser. The planner imports only class names and class counts; student-level columns are ignored.
 
-The public site loads `schedule.json` on startup so every device can see the same published schedule. Browser edits remain local until `schedule.json` is updated in the repository.
+The public site syncs the shared schedule through Firebase Realtime Database at `/schedule`. `schedule.json` remains a safe fallback seed if Firebase is unavailable.
 
 ## GitHub Pages
 

@@ -143,13 +143,15 @@
           </label>
           <button id="resetBtn" class="danger" type="button">Reset planner</button>
         </div>
-        <p class="settings-note">First visit loads the shared schedule. Changes you make stay on this device after refresh. Use Reset planner to return this device to the published shared schedule.</p>
+        <p class="settings-note">Changes save to the shared live schedule and sync across devices. Use Reset planner to publish the original schedule again.</p>
       </section>
       </section>
     </main>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>
   </body>
