@@ -20,6 +20,7 @@
     <main>
       <nav class="tabs" aria-label="Planner sections">
         <button class="tab-button active" type="button" data-tab="preview">Preview</button>
+        <button class="tab-button" type="button" data-tab="students">Students</button>
         <button class="tab-button" type="button" data-tab="classes">Classes</button>
         <button class="tab-button" type="button" data-tab="settings">Settings</button>
       </nav>
@@ -30,11 +31,75 @@
         <section class="band preview-band">
           <div class="section-heading compact-heading">
             <div>
-              <p class="eyebrow">Schedule preview</p>
+              <p id="previewTitle" class="eyebrow">Schedule preview</p>
             </div>
           </div>
           <div class="timeline" aria-label="Class schedule timeline">
             <div id="timelineBlocks"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="students" aria-labelledby="studentsTitle">
+        <section class="band students-band">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Organizer mode</p>
+              <h2 id="studentsTitle">Call registered students class-wise and update checkup status.</h2>
+              <p class="settings-note">Only signed-in organizers can view student names or change schedule settings.</p>
+            </div>
+          </div>
+
+          <form id="loginForm" class="login-box">
+            <label>
+              Organizer email
+              <input id="organizerEmail" type="email" autocomplete="username" required>
+            </label>
+            <label>
+              Password
+              <input id="organizerPassword" type="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit">Unlock organizer mode</button>
+          </form>
+
+          <div id="organizerPanel" class="organizer-panel" hidden>
+            <div class="student-toolbar">
+              <label>
+                Class
+                <select id="studentClassFilter">
+                  <option value="all">All classes</option>
+                </select>
+              </label>
+              <label>
+                Search
+                <input id="studentSearch" type="search" placeholder="Student name">
+              </label>
+              <label class="file-button secondary">
+                Import students
+                <input id="studentImportInput" type="file" accept=".xlsx,.xls,.csv,.tsv,.txt">
+              </label>
+              <button id="logoutBtn" class="secondary" type="button">Sign out</button>
+            </div>
+
+            <form id="addStudentForm" class="add-student-form">
+              <label>
+                First name
+                <input id="newStudentFirst" autocomplete="off" required>
+              </label>
+              <label>
+                Last name
+                <input id="newStudentLast" autocomplete="off">
+              </label>
+              <label>
+                Class
+                <input id="newStudentClass" list="classOptions" autocomplete="off" required>
+                <datalist id="classOptions"></datalist>
+              </label>
+              <button type="submit">Add student</button>
+            </form>
+
+            <p id="organizerStatus" class="settings-note"></p>
+            <div id="studentList" class="student-list"></div>
           </div>
         </section>
       </section>
@@ -151,6 +216,7 @@
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>

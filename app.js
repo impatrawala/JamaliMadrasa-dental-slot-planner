@@ -12,6 +12,8 @@
     appId: "1:929701254374:web:e462287271a22ce5075727",
   };
   const FIREBASE_SCHEDULE_PATH = "schedule";
+  const FIREBASE_STUDENTS_PATH = "students";
+  const STUDENT_STATUSES = ["Pending", "Called", "Completed", "Not present", "Skipped", "Needs follow-up"];
   const BASE_GLOBAL = {
     checkupDate: new Date().toISOString().slice(0, 10),
     startTime: "09:00",
@@ -32,7 +34,12 @@
   const state = clone(defaultSchedule);
   const elements = {};
   let scheduleRef = null;
+  let studentsRef = null;
+  let auth = null;
+  let currentUser = null;
+  let students = [];
   let applyingRemoteSchedule = false;
+  let studentsSubscribed = false;
   let saveTimer = null;
 
   document.addEventListener("DOMContentLoaded", init);
@@ -42,6 +49,7 @@
     bindEvents();
     purgeLegacyStudentRecords();
     setupFirebase();
+    subscribeToAuthState();
     await loadState();
     renderAll();
     subscribeToSharedSchedule();
@@ -50,8 +58,10 @@
   function cacheElements() {
     [
       "addClassForm",
+      "addStudentForm",
       "checkupDate",
       "classConfigBody",
+      "classOptions",
       "copyBtn",
       "exportPlannerBtn",
       "globalBreak",
@@ -60,12 +70,25 @@
       "globalSlot",
       "globalStart",
       "importInput",
+      "loginForm",
+      "logoutBtn",
       "metrics",
       "newClassCount",
       "newClassName",
+      "newStudentClass",
+      "newStudentFirst",
+      "newStudentLast",
+      "organizerEmail",
+      "organizerPanel",
+      "organizerPassword",
+      "organizerStatus",
       "plannerImportInput",
       "reflowBtn",
       "resetBtn",
+      "studentClassFilter",
+      "studentImportInput",
+      "studentList",
+      "studentSearch",
       "timelineBlocks",
       "toast",
     ].forEach((id) => {
@@ -80,14 +103,27 @@
 
     elements.addClassForm.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (!requireOrganizer()) return;
       addClass(elements.newClassName.value, elements.newClassCount.value);
     });
 
     elements.importInput.addEventListener("change", importScheduleFile);
     elements.exportPlannerBtn.addEventListener("click", exportPlannerFile);
     elements.plannerImportInput.addEventListener("change", importPlannerFile);
+    elements.loginForm.addEventListener("submit", signInOrganizer);
+    elements.addStudentForm.addEventListener("submit", addStudent);
+    elements.logoutBtn.addEventListener("click", signOutOrganizer);
+    elements.studentClassFilter.addEventListener("change", renderStudents);
+    elements.studentImportInput.addEventListener("change", importStudentFile);
+    elements.studentSearch.addEventListener("input", renderStudents);
+    elements.studentList.addEventListener("change", updateStudentStatus);
+    elements.studentList.addEventListener("click", deleteStudent);
 
     elements.globalScheduleForm.addEventListener("change", () => {
+      if (!requireOrganizer()) {
+        renderGlobalSchedule();
+        return;
+      }
       const previousGlobal = { ...state.global };
       saveGlobalFromUi();
       applyGlobalDefaults(previousGlobal);
@@ -101,6 +137,10 @@
       const id = target.dataset.id;
       const field = target.dataset.field;
       if (!id || !field) return;
+      if (!requireOrganizer()) {
+        renderClassConfig();
+        return;
+      }
 
       const classItem = getClass(id);
       if (!classItem) return;
@@ -129,6 +169,7 @@
     elements.classConfigBody.addEventListener("click", (event) => {
       const button = event.target.closest("button[data-action]");
       if (!button) return;
+      if (!requireOrganizer()) return;
 
       if (button.dataset.action === "move") {
         moveClass(button.dataset.id, button.dataset.direction);
@@ -140,6 +181,7 @@
     });
 
     elements.reflowBtn.addEventListener("click", () => {
+      if (!requireOrganizer()) return;
       saveGlobalFromUi();
       reflowClassStarts();
       persist();
@@ -150,6 +192,7 @@
     elements.copyBtn.addEventListener("click", copySchedule);
 
     elements.resetBtn.addEventListener("click", async () => {
+      if (!requireOrganizer()) return;
       if (!window.confirm("Reset this device back to the published shared schedule?")) return;
       localStorage.removeItem(STORAGE_KEY);
       const loadedSharedSchedule = await loadPublishedSchedule();
@@ -199,7 +242,7 @@
   }
 
   function setupFirebase() {
-    if (!window.firebase?.initializeApp || !window.firebase?.database) {
+    if (!window.firebase?.initializeApp || !window.firebase?.database || !window.firebase?.auth) {
       console.warn("Firebase SDK is not available; using local fallback.");
       return;
     }
@@ -208,11 +251,38 @@
       const app = window.firebase.apps?.length
         ? window.firebase.app()
         : window.firebase.initializeApp(FIREBASE_CONFIG);
+      auth = window.firebase.auth(app);
       scheduleRef = window.firebase.database(app).ref(FIREBASE_SCHEDULE_PATH);
+      studentsRef = window.firebase.database(app).ref(FIREBASE_STUDENTS_PATH);
     } catch (error) {
       console.warn("Firebase could not be initialized.", error);
+      auth = null;
       scheduleRef = null;
+      studentsRef = null;
     }
+  }
+
+  function subscribeToAuthState() {
+    if (!auth) {
+      renderOrganizerAccess();
+      return;
+    }
+
+    auth.onAuthStateChanged((user) => {
+      currentUser = user;
+
+      if (user) {
+        subscribeToStudents();
+      } else {
+        if (studentsRef && studentsSubscribed) {
+          studentsRef.off("value");
+          studentsSubscribed = false;
+        }
+        students = [];
+      }
+
+      renderAll();
+    });
   }
 
   function subscribeToSharedSchedule() {
@@ -283,13 +353,13 @@
   }
 
   function saveSharedScheduleDebounced() {
-    if (applyingRemoteSchedule || !scheduleRef) return;
+    if (applyingRemoteSchedule || !scheduleRef || !canEdit()) return;
     window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(saveSharedSchedule, 250);
   }
 
   function saveSharedSchedule() {
-    if (applyingRemoteSchedule || !scheduleRef) return;
+    if (applyingRemoteSchedule || !scheduleRef || !canEdit()) return;
 
     scheduleRef.set({
       version: 1,
@@ -307,6 +377,9 @@
     renderMetrics();
     renderClassConfig();
     renderTimeline();
+    renderStudentFilters();
+    renderStudents();
+    renderOrganizerAccess();
   }
 
   function renderGlobalSchedule() {
@@ -397,6 +470,376 @@
     elements.timelineBlocks.innerHTML = blocks || `<p class="small-text">No classes are enabled yet.</p>`;
   }
 
+  function renderOrganizerAccess() {
+    const unlocked = canEdit();
+
+    elements.loginForm.hidden = unlocked;
+    elements.organizerPanel.hidden = !unlocked;
+    elements.loginForm.querySelector("button").disabled = !auth;
+
+    if (!auth) {
+      elements.organizerStatus.textContent = "Firebase organizer login is not available on this page.";
+    } else if (unlocked) {
+      elements.organizerStatus.textContent = `Organizer signed in: ${currentUser.email || "authorized user"}.`;
+    } else {
+      elements.organizerStatus.textContent = "";
+    }
+
+    document
+      .querySelectorAll('[data-panel="classes"] input, [data-panel="classes"] button, [data-panel="settings"] input, [data-panel="settings"] button')
+      .forEach((control) => {
+        control.disabled = !unlocked;
+      });
+
+    document
+      .querySelectorAll('[data-panel="classes"] .file-button, [data-panel="settings"] .file-button')
+      .forEach((label) => {
+        label.classList.toggle("locked", !unlocked);
+      });
+  }
+
+  function renderStudentFilters() {
+    const selectedClass = elements.studentClassFilter.value || "all";
+    const classNames = [...new Set(students.map((student) => student.classLevel).filter(Boolean))]
+      .sort(compareClassNames);
+    const knownClassNames = [
+      ...new Set([
+        ...state.classes.map((classItem) => classItem.name).filter(Boolean),
+        ...classNames,
+      ]),
+    ].sort(compareClassNames);
+
+    elements.studentClassFilter.innerHTML = [
+      `<option value="all">All classes</option>`,
+      ...classNames.map((className) => `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`),
+    ].join("");
+    elements.classOptions.innerHTML = knownClassNames
+      .map((className) => `<option value="${escapeAttr(className)}"></option>`)
+      .join("");
+
+    elements.studentClassFilter.value = classNames.includes(selectedClass) ? selectedClass : "all";
+  }
+
+  function renderStudents() {
+    if (!canEdit()) {
+      elements.studentList.innerHTML = "";
+      return;
+    }
+
+    const selectedClass = elements.studentClassFilter.value || "all";
+    const searchTerm = normalizeSpace(elements.studentSearch.value).toLowerCase();
+    const filteredStudents = students.filter((student) => {
+      const classMatches = selectedClass === "all" || student.classLevel === selectedClass;
+      const searchMatches = !searchTerm || student.fullName.toLowerCase().includes(searchTerm);
+      return classMatches && searchMatches;
+    });
+
+    if (!filteredStudents.length) {
+      elements.studentList.innerHTML = `<p class="empty-state">No students match this view.</p>`;
+      return;
+    }
+
+    const groups = filteredStudents.reduce((grouped, student) => {
+      const className = student.classLevel || "Unassigned";
+      if (!grouped.has(className)) grouped.set(className, []);
+      grouped.get(className).push(student);
+      return grouped;
+    }, new Map());
+
+    elements.studentList.innerHTML = [...groups.entries()]
+      .sort(([a], [b]) => compareClassNames(a, b))
+      .map(([className, classStudents]) => {
+        const completedCount = classStudents.filter((student) => student.status === "Completed").length;
+        return `
+          <section class="student-class-group">
+            <div class="student-class-heading">
+              <h3>${escapeHtml(className)}</h3>
+              <span>${completedCount}/${classStudents.length} completed</span>
+            </div>
+            <div class="student-cards">
+              ${classStudents.sort(compareStudents).map(renderStudentCard).join("")}
+            </div>
+          </section>
+        `;
+      })
+      .join("");
+  }
+
+  function renderStudentCard(student) {
+    const statusClass = statusToClass(student.status);
+    return `
+      <article class="student-card">
+        <div class="student-card-header">
+          <strong>${escapeHtml(student.fullName)}</strong>
+          <span class="status-pill ${statusClass}">${escapeHtml(student.status)}</span>
+        </div>
+        <label>
+          Status
+          <select class="status-select" data-student-id="${escapeAttr(student.id)}">
+            ${STUDENT_STATUSES.map((status) => `
+              <option value="${escapeAttr(status)}" ${status === student.status ? "selected" : ""}>${escapeHtml(status)}</option>
+            `).join("")}
+          </select>
+        </label>
+        <button type="button" class="tiny danger" data-delete-student="${escapeAttr(student.id)}">Delete</button>
+      </article>
+    `;
+  }
+
+  function subscribeToStudents() {
+    if (!studentsRef || studentsSubscribed) return;
+
+    studentsSubscribed = true;
+    studentsRef.on("value", (snapshot) => {
+      const value = snapshot.val() || {};
+      const records = Array.isArray(value) ? value : Object.values(value);
+      students = records.map(normalizeStudentRecord).sort(compareStudents);
+      renderStudentFilters();
+      renderStudents();
+    }, (error) => {
+      console.warn("Firebase students could not be loaded.", error);
+      showToast("Could not load students. Check Firebase rules.");
+    });
+  }
+
+  async function signInOrganizer(event) {
+    event.preventDefault();
+
+    if (!auth) {
+      showToast("Organizer login is not available yet.");
+      return;
+    }
+
+    const email = normalizeSpace(elements.organizerEmail.value);
+    const password = elements.organizerPassword.value;
+
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      elements.organizerPassword.value = "";
+      showToast("Organizer mode unlocked.");
+    } catch (error) {
+      console.warn("Organizer sign-in failed.", error);
+      showToast("Sign in failed. Check the email and password.");
+    }
+  }
+
+  async function signOutOrganizer() {
+    if (!auth) return;
+
+    try {
+      await auth.signOut();
+      showToast("Signed out of organizer mode.");
+    } catch (error) {
+      console.warn("Organizer sign-out failed.", error);
+      showToast("Sign out failed. Try again.");
+    }
+  }
+
+  async function addStudent(event) {
+    event.preventDefault();
+    if (!requireOrganizer() || !studentsRef) return;
+
+    const firstName = normalizeSpace(elements.newStudentFirst.value);
+    const lastName = normalizeSpace(elements.newStudentLast.value);
+    const classLevel = normalizeSpace(elements.newStudentClass.value);
+    const fullName = normalizeSpace(`${firstName} ${lastName}`);
+    if (!firstName || !classLevel) return;
+
+    const id = makeStudentId({
+      firstName,
+      lastName,
+      fullName,
+      classLevel,
+      rowKey: String(Date.now()),
+    });
+
+    try {
+      await studentsRef.child(id).set({
+        id,
+        firstName,
+        lastName,
+        fullName,
+        classLevel,
+        status: "Pending",
+        addedAt: new Date().toISOString(),
+      });
+      elements.addStudentForm.reset();
+      showToast(`${fullName} added.`);
+    } catch (error) {
+      console.warn("Student could not be added.", error);
+      showToast("Student could not be added.");
+    }
+  }
+
+  async function importStudentFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!requireOrganizer() || !studentsRef) {
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const rows = await readRowsFromFile(file);
+      const importedStudents = rowsToStudents(rows);
+      const importedCount = Object.keys(importedStudents).length;
+      if (!importedCount) {
+        showToast("No student names were found in that file.");
+        return;
+      }
+
+      if (!window.confirm(`Replace the current student call list with ${importedCount} imported students?`)) {
+        return;
+      }
+
+      await studentsRef.set(importedStudents);
+
+      if (window.confirm("Also update the schedule class counts from this student list?")) {
+        state.classes = studentRecordsToClasses(Object.values(importedStudents));
+        reflowClassStarts();
+        persist();
+      }
+
+      renderAll();
+      showToast("Student call list imported.");
+    } catch (error) {
+      console.error(error);
+      showToast("Student import failed. Try exporting the sheet as CSV.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  function updateStudentStatus(event) {
+    const target = event.target;
+    if (!target.matches("select[data-student-id]")) return;
+    if (!requireOrganizer()) return;
+
+    const id = target.dataset.studentId;
+    const status = STUDENT_STATUSES.includes(target.value) ? target.value : "Pending";
+    const student = students.find((item) => item.id === id);
+    if (!student || !studentsRef) return;
+
+    student.status = status;
+    renderStudents();
+
+    studentsRef.child(id).update({
+      status,
+      updatedAt: new Date().toISOString(),
+    }).catch((error) => {
+      console.warn("Student status could not be saved.", error);
+      showToast("Status could not be saved.");
+    });
+  }
+
+  async function deleteStudent(event) {
+    const button = event.target.closest("button[data-delete-student]");
+    if (!button) return;
+    if (!requireOrganizer() || !studentsRef) return;
+
+    const student = students.find((item) => item.id === button.dataset.deleteStudent);
+    if (!student) return;
+    if (!window.confirm(`Delete ${student.fullName} from the call list?`)) return;
+
+    try {
+      await studentsRef.child(student.id).remove();
+      showToast(`${student.fullName} deleted.`);
+    } catch (error) {
+      console.warn("Student could not be deleted.", error);
+      showToast("Student could not be deleted.");
+    }
+  }
+
+  function rowsToStudents(rows) {
+    if (!rows.length) return {};
+
+    const headers = Object.keys(rows[0]);
+    const firstNameKey = findColumn(headers, ["first name", "firstname", "given name", "student first name"]);
+    const lastNameKey = findColumn(headers, ["last name", "lastname", "surname", "student last name"]);
+    const fullNameKey = findColumn(headers, ["student name", "full name"]);
+    const classKey = findColumn(headers, ["class/level", "class level", "class", "level", "grade"]);
+    const consentKey = findColumn(headers, ["consent", "permission"]);
+    if ((!firstNameKey && !fullNameKey) || !classKey) return {};
+
+    return rows.reduce((studentMap, row, index) => {
+      if (consentKey && normalizeSpace(row[consentKey]).toLowerCase() !== "yes") return studentMap;
+
+      const firstName = normalizeSpace(firstNameKey ? row[firstNameKey] : "");
+      const lastName = normalizeSpace(lastNameKey ? row[lastNameKey] : "");
+      const fullName = normalizeSpace(fullNameKey ? row[fullNameKey] : `${firstName} ${lastName}`);
+      const classLevel = normalizeSpace(row[classKey]);
+      if (!fullName || !classLevel) return studentMap;
+
+      const id = makeStudentId({
+        firstName,
+        lastName,
+        fullName,
+        classLevel,
+        rowKey: String(index + 2),
+      });
+
+      studentMap[id] = {
+        id,
+        firstName,
+        lastName,
+        fullName,
+        classLevel,
+        status: "Pending",
+      };
+      return studentMap;
+    }, {});
+  }
+
+  function studentRecordsToClasses(studentRecords) {
+    const classCounts = studentRecords.reduce((counts, student) => {
+      const className = normalizeSpace(student.classLevel);
+      if (!className) return counts;
+      counts.set(className, (counts.get(className) || 0) + 1);
+      return counts;
+    }, new Map());
+
+    return [...classCounts.entries()]
+      .sort(([a], [b]) => compareClassNames(a, b))
+      .map(([className, count]) => makeClass(className, count));
+  }
+
+  function normalizeStudentRecord(record) {
+    const firstName = normalizeSpace(record.firstName);
+    const lastName = normalizeSpace(record.lastName);
+    const fullName = normalizeSpace(record.fullName) || normalizeSpace(`${firstName} ${lastName}`) || "Unnamed student";
+    const classLevel = normalizeSpace(record.classLevel) || "Unassigned";
+    const status = STUDENT_STATUSES.includes(record.status) ? record.status : "Pending";
+
+    return {
+      ...record,
+      id: normalizeSpace(record.id) || makeStudentId({ firstName, lastName, fullName, classLevel }),
+      firstName,
+      lastName,
+      fullName,
+      classLevel,
+      status,
+    };
+  }
+
+  function compareStudents(a, b) {
+    return compareClassNames(a.classLevel, b.classLevel)
+      || a.lastName.localeCompare(b.lastName)
+      || a.firstName.localeCompare(b.firstName)
+      || a.fullName.localeCompare(b.fullName);
+  }
+
+  function canEdit() {
+    return Boolean(currentUser);
+  }
+
+  function requireOrganizer() {
+    if (canEdit()) return true;
+
+    showTab("students");
+    showToast("Sign in as an organizer to make changes.");
+    return false;
+  }
+
   function addClass(name, count) {
     const className = normalizeSpace(name);
     if (!className) return;
@@ -413,6 +856,10 @@
   async function importScheduleFile(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!requireOrganizer()) {
+      event.target.value = "";
+      return;
+    }
 
     try {
       const rows = await readRowsFromFile(file);
@@ -658,6 +1105,10 @@
   async function importPlannerFile(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!requireOrganizer()) {
+      event.target.value = "";
+      return;
+    }
 
     try {
       const parsed = JSON.parse(await file.text());
@@ -761,6 +1212,21 @@
 
   function normalizeSpace(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function statusToClass(status) {
+    return `status-${normalizeSpace(status).toLowerCase().replace(/[^a-z0-9]+/g, "-") || "pending"}`;
+  }
+
+  function makeStudentId(student) {
+    const input = `${student.fullName}|${student.firstName}|${student.lastName}|${student.classLevel}|${student.rowKey || ""}`.toLowerCase();
+    let hash = 0;
+
+    for (let index = 0; index < input.length; index += 1) {
+      hash = ((hash << 5) - hash + input.charCodeAt(index)) | 0;
+    }
+
+    return `student-${Math.abs(hash).toString(36)}`;
   }
 
   function cleanColumnName(value) {

@@ -60,6 +60,18 @@ button:hover,
   background: var(--teal-strong);
 }
 
+button:disabled,
+input:disabled,
+select:disabled,
+.file-button.locked {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.file-button.locked {
+  pointer-events: none;
+}
+
 button.secondary,
 .secondary {
   border: 1px solid var(--line);
@@ -168,7 +180,7 @@ main {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -483,6 +495,123 @@ tbody tr:last-child td {
   margin-top: 12px;
 }
 
+.login-box,
+.add-student-form,
+.student-toolbar {
+  display: grid;
+  gap: 12px;
+}
+
+.login-box {
+  max-width: 560px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+
+.add-student-form {
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) auto;
+  align-items: end;
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.student-toolbar {
+  grid-template-columns: minmax(160px, 240px) minmax(160px, 1fr) auto auto;
+  align-items: end;
+}
+
+.student-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.student-class-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.student-class-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--mint);
+  padding: 12px;
+}
+
+.student-class-heading span {
+  color: var(--teal-strong);
+  font-size: 0.86rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.student-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.student-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.student-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.student-card-header strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.status-pill {
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: #edf1ef;
+  color: var(--muted);
+  padding: 4px 7px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.status-completed {
+  background: var(--green-soft);
+  color: #356e18;
+}
+
+.status-called {
+  background: #e8f1ff;
+  color: #235789;
+}
+
+.status-not-present,
+.status-skipped {
+  background: var(--coral-soft);
+  color: #a32f2f;
+}
+
+.status-needs-follow-up {
+  background: #fff4cf;
+  color: #765500;
+}
+
 .empty-state {
   padding: 32px;
   color: var(--muted);
@@ -560,9 +689,22 @@ dialog::backdrop {
   .filters,
   .global-schedule,
   .add-class-form,
+  .login-box,
+  .add-student-form,
+  .student-toolbar,
   .metric-strip,
   .dialog-grid {
     grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+
+  .login-box button,
+  .add-student-form button,
+  .student-toolbar button {
+    grid-column: 1 / -1;
+  }
+
+  .student-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .schedule-layout {
@@ -679,7 +821,8 @@ dialog::backdrop {
 
   .tab-button {
     min-height: 42px;
-    padding: 8px;
+    padding: 8px 5px;
+    font-size: 0.82rem;
   }
 
   .brand {
@@ -702,8 +845,26 @@ dialog::backdrop {
   .filters,
   .global-schedule,
   .add-class-form,
+  .login-box,
+  .add-student-form,
+  .student-toolbar,
   .dialog-grid {
     grid-template-columns: 1fr;
+  }
+
+  .student-cards {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .student-class-heading,
+  .student-card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .student-class-heading span {
+    white-space: normal;
   }
 
   .metric-strip {
