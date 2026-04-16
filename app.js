@@ -86,6 +86,7 @@
       "reflowBtn",
       "resetBtn",
       "studentClassFilter",
+      "studentImportHelp",
       "studentImportInput",
       "studentList",
       "studentSearch",
@@ -680,10 +681,13 @@
     }
 
     try {
+      setImportHelp(`Reading ${file.name}...`);
       const rows = await readRowsFromFile(file);
       const importedStudents = rowsToStudents(rows);
       const importedCount = Object.keys(importedStudents).length;
       if (!importedCount) {
+        const headers = rows[0] ? Object.keys(rows[0]).join(", ") : "no headers";
+        setImportHelp(`Import could not find student rows. Needed columns include First Name and Class/Level. Found: ${headers}`);
         showToast("No student names were found in that file.");
         return;
       }
@@ -701,10 +705,15 @@
       }
 
       renderAll();
+      setImportHelp(`${importedCount} students imported from ${file.name}. Each student now has a status dropdown.`);
       showToast("Student call list imported.");
     } catch (error) {
       console.error(error);
-      showToast("Student import failed. Try exporting the sheet as CSV.");
+      const message = error.message === "Excel parser is not loaded."
+        ? "Excel support did not load. Refresh the page and try the .xlsx file again."
+        : "Student import failed. Check that the sheet has First Name and Class/Level columns.";
+      setImportHelp(message);
+      showToast(message);
     } finally {
       event.target.value = "";
     }
@@ -759,6 +768,7 @@
     const fullNameKey = findColumn(headers, ["student name", "full name"]);
     const classKey = findColumn(headers, ["class/level", "class level", "class", "level", "grade"]);
     const consentKey = findColumn(headers, ["consent", "permission"]);
+    const statusKey = findColumn(headers, ["status", "checkup status", "screening status"]);
     if ((!firstNameKey && !fullNameKey) || !classKey) return {};
 
     return rows.reduce((studentMap, row, index) => {
@@ -768,6 +778,7 @@
       const lastName = normalizeSpace(lastNameKey ? row[lastNameKey] : "");
       const fullName = normalizeSpace(fullNameKey ? row[fullNameKey] : `${firstName} ${lastName}`);
       const classLevel = normalizeSpace(row[classKey]);
+      const importedStatus = normalizeStudentStatus(statusKey ? row[statusKey] : "");
       if (!fullName || !classLevel) return studentMap;
 
       const id = makeStudentId({
@@ -784,7 +795,7 @@
         lastName,
         fullName,
         classLevel,
-        status: "Pending",
+        status: importedStatus,
       };
       return studentMap;
     }, {});
@@ -808,7 +819,7 @@
     const lastName = normalizeSpace(record.lastName);
     const fullName = normalizeSpace(record.fullName) || normalizeSpace(`${firstName} ${lastName}`) || "Unnamed student";
     const classLevel = normalizeSpace(record.classLevel) || "Unassigned";
-    const status = STUDENT_STATUSES.includes(record.status) ? record.status : "Pending";
+    const status = normalizeStudentStatus(record.status);
 
     return {
       ...record,
@@ -1216,6 +1227,17 @@
 
   function statusToClass(status) {
     return `status-${normalizeSpace(status).toLowerCase().replace(/[^a-z0-9]+/g, "-") || "pending"}`;
+  }
+
+  function normalizeStudentStatus(value) {
+    const cleaned = normalizeSpace(value);
+    return STUDENT_STATUSES.find((status) => status.toLowerCase() === cleaned.toLowerCase()) || "Pending";
+  }
+
+  function setImportHelp(message) {
+    if (elements.studentImportHelp) {
+      elements.studentImportHelp.textContent = message;
+    }
   }
 
   function makeStudentId(student) {
