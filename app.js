@@ -680,24 +680,54 @@
       return;
     }
 
+    let rows = [];
+    let importedStudents = {};
+    let importedCount = 0;
+
     try {
       setImportHelp(`Reading ${file.name}...`);
-      const rows = await readRowsFromFile(file);
-      const importedStudents = rowsToStudents(rows);
-      const importedCount = Object.keys(importedStudents).length;
-      if (!importedCount) {
-        const headers = rows[0] ? Object.keys(rows[0]).join(", ") : "no headers";
-        setImportHelp(`Import could not find student rows. Needed columns include First Name and Class/Level. Found: ${headers}`);
-        showToast("No student names were found in that file.");
-        return;
-      }
+      rows = await readRowsFromFile(file);
+      importedStudents = rowsToStudents(rows);
+      importedCount = Object.keys(importedStudents).length;
+    } catch (error) {
+      console.error(error);
+      const message = error.message === "Excel parser is not loaded."
+        ? "Excel support did not load. Refresh the page and try the .xlsx file again."
+        : `Student import failed while reading the file. ${error.message}`;
+      setImportHelp(message);
+      showToast("Student import failed while reading the file.");
+      event.target.value = "";
+      return;
+    }
 
-      if (!window.confirm(`Replace the current student call list with ${importedCount} imported students?`)) {
-        return;
-      }
+    if (!importedCount) {
+      const headers = rows[0] ? Object.keys(rows[0]).join(", ") : "no headers";
+      setImportHelp(`No students were imported. Needed First Name and Class/Level columns, and Consent must be Yes when a Consent column exists. Found: ${headers}`);
+      showToast("No student names were found in that file.");
+      event.target.value = "";
+      return;
+    }
 
+    if (!window.confirm(`Replace the current student call list with ${importedCount} imported students?`)) {
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setImportHelp(`Saving ${importedCount} students to Firebase...`);
       await studentsRef.set(importedStudents);
+    } catch (error) {
+      console.error(error);
+      const message = isFirebasePermissionError(error)
+        ? "Firebase is blocking the student import. In Realtime Database rules, set students read/write to auth != null, then try again."
+        : `Firebase could not save the student list: ${error.message || "unknown error"}`;
+      setImportHelp(message);
+      showToast("Firebase blocked the student import.");
+      event.target.value = "";
+      return;
+    }
 
+    try {
       if (window.confirm("Also update the schedule class counts from this student list?")) {
         state.classes = studentRecordsToClasses(Object.values(importedStudents));
         reflowClassStarts();
@@ -709,11 +739,8 @@
       showToast("Student call list imported.");
     } catch (error) {
       console.error(error);
-      const message = error.message === "Excel parser is not loaded."
-        ? "Excel support did not load. Refresh the page and try the .xlsx file again."
-        : "Student import failed. Check that the sheet has First Name and Class/Level columns.";
-      setImportHelp(message);
-      showToast(message);
+      setImportHelp(`Students were saved, but the schedule count update failed: ${error.message || "unknown error"}`);
+      showToast("Students imported. Schedule count update failed.");
     } finally {
       event.target.value = "";
     }
@@ -763,10 +790,10 @@
     if (!rows.length) return {};
 
     const headers = Object.keys(rows[0]);
-    const firstNameKey = findColumn(headers, ["first name", "firstname", "given name", "student first name"]);
-    const lastNameKey = findColumn(headers, ["last name", "lastname", "surname", "student last name"]);
+    const firstNameKey = findColumn(headers, ["first name", "firstname", "given name", "student first name"]) || headers[1];
+    const lastNameKey = findColumn(headers, ["last name", "lastname", "surname", "student last name"]) || headers[2];
     const fullNameKey = findColumn(headers, ["student name", "full name"]);
-    const classKey = findColumn(headers, ["class/level", "class level", "class", "level", "grade"]);
+    const classKey = findColumn(headers, ["class/level", "class level", "class", "level", "grade"]) || headers[4];
     const consentKey = findColumn(headers, ["consent", "permission"]);
     const statusKey = findColumn(headers, ["status", "checkup status", "screening status"]);
     if ((!firstNameKey && !fullNameKey) || !classKey) return {};
@@ -1238,6 +1265,12 @@
     if (elements.studentImportHelp) {
       elements.studentImportHelp.textContent = message;
     }
+  }
+
+  function isFirebasePermissionError(error) {
+    const code = String(error?.code || "");
+    const message = String(error?.message || "");
+    return code.includes("PERMISSION_DENIED") || /permission|denied/i.test(message);
   }
 
   function makeStudentId(student) {
