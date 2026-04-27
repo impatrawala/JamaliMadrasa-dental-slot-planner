@@ -13,9 +13,15 @@
   };
   const FIREBASE_SCHEDULE_PATH = "schedule";
   const FIREBASE_STUDENTS_PATH = "students";
-  const STUDENT_STATUSES = ["Pending", "Called", "Completed", "Not present", "Urgent referral", "Needs follow-up"];
+  const STUDENT_STATUSES = ["Pending", "Completed", "Not present", "Urgent referral"];
   const STUDENT_STATUS_ALIASES = {
     skipped: "Urgent referral",
+    called: "Completed",
+    "needs follow-up": "Completed",
+    "needs follow up": "Completed",
+    "follow-up": "Completed",
+    "follow up": "Completed",
+    "in progress": "Completed",
   };
   const BASE_GLOBAL = {
     checkupDate: new Date().toISOString().slice(0, 10),
@@ -502,10 +508,10 @@
     const metrics = [
       ["Registered", report.total],
       ["Screened", report.screened],
+      ["Completed", report.completed],
       ["Urgent referral", report.urgent],
-      ["Needs follow-up", report.followUp],
       ["Not present", report.notPresent],
-      ["Progress", `${report.progress}%`],
+      ["Pending", report.pending],
     ];
 
     elements.reportMetrics.innerHTML = metrics
@@ -515,11 +521,11 @@
     elements.reportSummary.innerHTML = `
       <div class="report-card">
         <strong>${escapeHtml(report.screened)} of ${escapeHtml(report.total)} students have been screened.</strong>
-        <p>${escapeHtml(report.urgent)} need urgent dental care, ${escapeHtml(report.followUp)} need follow-up, ${escapeHtml(report.notPresent)} were not present, and ${escapeHtml(report.pending + report.called)} are still in progress.</p>
+        <p>${escapeHtml(report.completed)} were completed, ${escapeHtml(report.urgent)} need urgent dental care, ${escapeHtml(report.notPresent)} were not present, and ${escapeHtml(report.pending)} are still pending screening.</p>
       </div>
     `;
 
-    const reportStatuses = ["Completed", "Urgent referral", "Needs follow-up", "Not present", "Pending", "Called"];
+    const reportStatuses = ["Completed", "Urgent referral", "Not present", "Pending"];
     elements.reportStatusBars.innerHTML = reportStatuses.map((status) => {
       const count = countStudentsByStatus(status);
       const width = report.total ? Math.max(6, Math.round((count / report.total) * 100)) : 0;
@@ -542,10 +548,10 @@
             <td data-label="Class">${escapeHtml(className)}</td>
             <td data-label="Total">${classStudents.length}</td>
             <td data-label="Screened">${classScreened}</td>
+            <td data-label="Completed">${classStudents.filter((student) => student.status === "Completed").length}</td>
             <td data-label="Urgent referral">${classStudents.filter((student) => student.status === "Urgent referral").length}</td>
-            <td data-label="Needs follow-up">${classStudents.filter((student) => student.status === "Needs follow-up").length}</td>
             <td data-label="Not present">${classStudents.filter((student) => student.status === "Not present").length}</td>
-            <td data-label="Pending">${classStudents.filter((student) => student.status === "Pending" || student.status === "Called").length}</td>
+            <td data-label="Pending">${classStudents.filter((student) => student.status === "Pending").length}</td>
           </tr>
         `;
       })
@@ -963,17 +969,15 @@
   }
 
   function isScreenedStatus(status) {
-    return ["Completed", "Urgent referral", "Needs follow-up"].includes(status);
+    return ["Completed", "Urgent referral"].includes(status);
   }
 
   function buildReportSnapshot() {
     const total = students.length;
     const urgent = countStudentsByStatus("Urgent referral");
     const completed = countStudentsByStatus("Completed");
-    const followUp = countStudentsByStatus("Needs follow-up");
     const notPresent = countStudentsByStatus("Not present");
     const pending = countStudentsByStatus("Pending");
-    const called = countStudentsByStatus("Called");
     const screened = students.filter((student) => isScreenedStatus(student.status)).length;
     const progress = total ? Math.round((screened / total) * 100) : 0;
 
@@ -981,10 +985,8 @@
       total,
       urgent,
       completed,
-      followUp,
       notPresent,
       pending,
-      called,
       screened,
       progress,
     };
@@ -1004,15 +1006,15 @@
           <td>${escapeHtml(className)}</td>
           <td>${classStudents.length}</td>
           <td>${classStudents.filter((student) => isScreenedStatus(student.status)).length}</td>
+          <td>${classStudents.filter((student) => student.status === "Completed").length}</td>
           <td>${classStudents.filter((student) => student.status === "Urgent referral").length}</td>
-          <td>${classStudents.filter((student) => student.status === "Needs follow-up").length}</td>
           <td>${classStudents.filter((student) => student.status === "Not present").length}</td>
-          <td>${classStudents.filter((student) => student.status === "Pending" || student.status === "Called").length}</td>
+          <td>${classStudents.filter((student) => student.status === "Pending").length}</td>
         </tr>
       `)
       .join("");
 
-    const statusRows = ["Completed", "Urgent referral", "Needs follow-up", "Not present", "Pending", "Called"]
+    const statusRows = ["Completed", "Urgent referral", "Not present", "Pending"]
       .map((status) => `
         <tr>
           <td>${escapeHtml(status)}</td>
@@ -1048,21 +1050,21 @@
     <div class="header">
       <p class="eyebrow">Jamali Madrasa</p>
       <h1>Dental status report</h1>
-      <p class="summary">Checkup date: ${escapeHtml(titleDate)}. Students previously marked as Skipped are treated as Urgent referral.</p>
+      <p class="summary">Checkup date: ${escapeHtml(titleDate)}.</p>
     </div>
 
     <div class="metric-grid">
       <div class="metric"><strong>${report.total}</strong><span>Registered</span></div>
       <div class="metric"><strong>${report.screened}</strong><span>Screened</span></div>
-      <div class="metric"><strong>${report.progress}%</strong><span>Progress</span></div>
+      <div class="metric"><strong>${report.completed}</strong><span>Completed</span></div>
       <div class="metric"><strong>${report.urgent}</strong><span>Urgent referral</span></div>
-      <div class="metric"><strong>${report.followUp}</strong><span>Needs follow-up</span></div>
       <div class="metric"><strong>${report.notPresent}</strong><span>Not present</span></div>
+      <div class="metric"><strong>${report.pending}</strong><span>Pending</span></div>
     </div>
 
     <section>
       <h2>Summary</h2>
-      <p class="summary">${escapeHtml(report.urgent)} need urgent dental care, ${escapeHtml(report.followUp)} need follow-up, ${escapeHtml(report.notPresent)} were not present, and ${escapeHtml(report.pending + report.called)} are still in progress.</p>
+      <p class="summary">${escapeHtml(report.completed)} were completed, ${escapeHtml(report.urgent)} need urgent dental care, ${escapeHtml(report.notPresent)} were not present, and ${escapeHtml(report.pending)} are pending screening.</p>
     </section>
 
     <section>
@@ -1083,8 +1085,8 @@
             <th>Class</th>
             <th>Total</th>
             <th>Screened</th>
+            <th>Completed</th>
             <th>Urgent referral</th>
-            <th>Needs follow-up</th>
             <th>Not present</th>
             <th>Pending</th>
           </tr>
