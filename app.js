@@ -1021,14 +1021,8 @@
       `)
       .join("");
 
-    const reportWindow = window.open("", "_blank", "noopener,noreferrer,width=960,height=900");
-    if (!reportWindow) {
-      showToast("Popup blocked. Allow popups to export the PDF.");
-      return;
-    }
-
     const titleDate = state.global.checkupDate || new Date().toISOString().slice(0, 10);
-    reportWindow.document.write(`<!doctype html>
+    const reportMarkup = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -1099,12 +1093,8 @@
       </table>
     </section>
   </body>
-</html>`);
-    reportWindow.document.close();
-    reportWindow.focus();
-    window.setTimeout(() => {
-      reportWindow.print();
-    }, 250);
+</html>`;
+    printReportMarkup(reportMarkup);
   }
 
   function canEdit() {
@@ -1514,6 +1504,61 @@
     const code = String(error?.code || "");
     const message = String(error?.message || "");
     return code.includes("PERMISSION_DENIED") || /permission|denied/i.test(message);
+  }
+
+  function printReportMarkup(markup) {
+    const existingFrame = document.getElementById("reportPrintFrame");
+    if (existingFrame) existingFrame.remove();
+
+    const frame = document.createElement("iframe");
+    frame.id = "reportPrintFrame";
+    frame.title = "Report print frame";
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    frame.setAttribute("aria-hidden", "true");
+    document.body.appendChild(frame);
+
+    const cleanup = () => {
+      window.setTimeout(() => {
+        frame.remove();
+      }, 1200);
+    };
+
+    frame.onload = () => {
+      const printWindow = frame.contentWindow;
+      if (!printWindow) {
+        showToast("Could not prepare the PDF export.");
+        cleanup();
+        return;
+      }
+
+      printWindow.focus();
+      printWindow.onafterprint = cleanup;
+      window.setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch (error) {
+          console.warn("Print dialog could not be opened.", error);
+          showToast("Could not open the print dialog.");
+          cleanup();
+        }
+      }, 250);
+    };
+
+    const doc = frame.contentDocument;
+    if (!doc) {
+      showToast("Could not prepare the PDF export.");
+      frame.remove();
+      return;
+    }
+
+    doc.open();
+    doc.write(markup);
+    doc.close();
   }
 
   function makeStudentId(student) {
