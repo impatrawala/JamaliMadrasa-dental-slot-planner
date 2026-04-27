@@ -491,6 +491,12 @@ tbody tr:last-child td {
   margin-top: 16px;
 }
 
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .settings-actions .file-button {
   width: auto;
 }
@@ -747,6 +753,7 @@ dialog::backdrop {
   .top-actions,
   .data-actions,
   .schedule-actions,
+  .report-actions,
   .settings-actions,
   .upload-box {
     justify-content: flex-start;

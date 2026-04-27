@@ -88,6 +88,7 @@
       "plannerImportInput",
       "reportClassBody",
       "reportMetrics",
+      "reportPdfBtn",
       "reportStatusBars",
       "reportSummary",
       "reportsContent",
@@ -120,6 +121,7 @@
     elements.importInput.addEventListener("change", importScheduleFile);
     elements.exportPlannerBtn.addEventListener("click", exportPlannerFile);
     elements.plannerImportInput.addEventListener("change", importPlannerFile);
+    elements.reportPdfBtn.addEventListener("click", exportReportsPdf);
     elements.loginForm.addEventListener("submit", signInOrganizer);
     elements.addStudentForm.addEventListener("submit", addStudent);
     elements.logoutBtn.addEventListener("click", signOutOrganizer);
@@ -495,23 +497,15 @@
     elements.reportsLocked.hidden = true;
     elements.reportsContent.hidden = false;
 
-    const total = students.length;
-    const urgent = countStudentsByStatus("Urgent referral");
-    const completed = countStudentsByStatus("Completed");
-    const followUp = countStudentsByStatus("Needs follow-up");
-    const notPresent = countStudentsByStatus("Not present");
-    const pending = countStudentsByStatus("Pending");
-    const called = countStudentsByStatus("Called");
-    const screened = students.filter((student) => isScreenedStatus(student.status)).length;
-    const progress = total ? Math.round((screened / total) * 100) : 0;
+    const report = buildReportSnapshot();
 
     const metrics = [
-      ["Registered", total],
-      ["Screened", screened],
-      ["Urgent referral", urgent],
-      ["Needs follow-up", followUp],
-      ["Not present", notPresent],
-      ["Progress", `${progress}%`],
+      ["Registered", report.total],
+      ["Screened", report.screened],
+      ["Urgent referral", report.urgent],
+      ["Needs follow-up", report.followUp],
+      ["Not present", report.notPresent],
+      ["Progress", `${report.progress}%`],
     ];
 
     elements.reportMetrics.innerHTML = metrics
@@ -520,15 +514,15 @@
 
     elements.reportSummary.innerHTML = `
       <div class="report-card">
-        <strong>${escapeHtml(screened)} of ${escapeHtml(total)} students have been screened.</strong>
-        <p>${escapeHtml(urgent)} need urgent dental care, ${escapeHtml(followUp)} need follow-up, ${escapeHtml(notPresent)} were not present, and ${escapeHtml(pending + called)} are still in progress.</p>
+        <strong>${escapeHtml(report.screened)} of ${escapeHtml(report.total)} students have been screened.</strong>
+        <p>${escapeHtml(report.urgent)} need urgent dental care, ${escapeHtml(report.followUp)} need follow-up, ${escapeHtml(report.notPresent)} were not present, and ${escapeHtml(report.pending + report.called)} are still in progress.</p>
       </div>
     `;
 
     const reportStatuses = ["Completed", "Urgent referral", "Needs follow-up", "Not present", "Pending", "Called"];
     elements.reportStatusBars.innerHTML = reportStatuses.map((status) => {
       const count = countStudentsByStatus(status);
-      const width = total ? Math.max(6, Math.round((count / total) * 100)) : 0;
+      const width = report.total ? Math.max(6, Math.round((count / report.total) * 100)) : 0;
       return `
         <div class="report-bar-row">
           <span class="status-pill ${statusToClass(status)}">${escapeHtml(status)}</span>
@@ -970,6 +964,147 @@
 
   function isScreenedStatus(status) {
     return ["Completed", "Urgent referral", "Needs follow-up"].includes(status);
+  }
+
+  function buildReportSnapshot() {
+    const total = students.length;
+    const urgent = countStudentsByStatus("Urgent referral");
+    const completed = countStudentsByStatus("Completed");
+    const followUp = countStudentsByStatus("Needs follow-up");
+    const notPresent = countStudentsByStatus("Not present");
+    const pending = countStudentsByStatus("Pending");
+    const called = countStudentsByStatus("Called");
+    const screened = students.filter((student) => isScreenedStatus(student.status)).length;
+    const progress = total ? Math.round((screened / total) * 100) : 0;
+
+    return {
+      total,
+      urgent,
+      completed,
+      followUp,
+      notPresent,
+      pending,
+      called,
+      screened,
+      progress,
+    };
+  }
+
+  function exportReportsPdf() {
+    if (!canEdit()) {
+      showToast("Sign in as an organizer to export reports.");
+      return;
+    }
+
+    const report = buildReportSnapshot();
+    const classRows = [...groupStudentsByClass().entries()]
+      .sort(([a], [b]) => compareClassNames(a, b))
+      .map(([className, classStudents]) => `
+        <tr>
+          <td>${escapeHtml(className)}</td>
+          <td>${classStudents.length}</td>
+          <td>${classStudents.filter((student) => isScreenedStatus(student.status)).length}</td>
+          <td>${classStudents.filter((student) => student.status === "Urgent referral").length}</td>
+          <td>${classStudents.filter((student) => student.status === "Needs follow-up").length}</td>
+          <td>${classStudents.filter((student) => student.status === "Not present").length}</td>
+          <td>${classStudents.filter((student) => student.status === "Pending" || student.status === "Called").length}</td>
+        </tr>
+      `)
+      .join("");
+
+    const statusRows = ["Completed", "Urgent referral", "Needs follow-up", "Not present", "Pending", "Called"]
+      .map((status) => `
+        <tr>
+          <td>${escapeHtml(status)}</td>
+          <td>${countStudentsByStatus(status)}</td>
+        </tr>
+      `)
+      .join("");
+
+    const reportWindow = window.open("", "_blank", "noopener,noreferrer,width=960,height=900");
+    if (!reportWindow) {
+      showToast("Popup blocked. Allow popups to export the PDF.");
+      return;
+    }
+
+    const titleDate = state.global.checkupDate || new Date().toISOString().slice(0, 10);
+    reportWindow.document.write(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Jamali Madrasa Dental Report</title>
+    <style>
+      body { font-family: Inter, Arial, sans-serif; margin: 32px; color: #17211f; }
+      h1, h2, p { margin: 0; }
+      .header { margin-bottom: 24px; }
+      .eyebrow { color: #126653; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+      .summary { margin-top: 8px; color: #52605c; }
+      .metric-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+      .metric { border: 1px solid #d8e3de; border-left: 6px solid #1e8a72; border-radius: 8px; padding: 12px; }
+      .metric strong { display: block; font-size: 24px; }
+      .metric span { color: #52605c; font-size: 13px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+      th, td { border: 1px solid #d8e3de; padding: 10px; text-align: left; font-size: 13px; }
+      th { background: #f4f8f6; }
+      section { margin-top: 24px; }
+      @media print { body { margin: 18px; } }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <p class="eyebrow">Jamali Madrasa</p>
+      <h1>Dental status report</h1>
+      <p class="summary">Checkup date: ${escapeHtml(titleDate)}. Students previously marked as Skipped are treated as Urgent referral.</p>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric"><strong>${report.total}</strong><span>Registered</span></div>
+      <div class="metric"><strong>${report.screened}</strong><span>Screened</span></div>
+      <div class="metric"><strong>${report.progress}%</strong><span>Progress</span></div>
+      <div class="metric"><strong>${report.urgent}</strong><span>Urgent referral</span></div>
+      <div class="metric"><strong>${report.followUp}</strong><span>Needs follow-up</span></div>
+      <div class="metric"><strong>${report.notPresent}</strong><span>Not present</span></div>
+    </div>
+
+    <section>
+      <h2>Summary</h2>
+      <p class="summary">${escapeHtml(report.urgent)} need urgent dental care, ${escapeHtml(report.followUp)} need follow-up, ${escapeHtml(report.notPresent)} were not present, and ${escapeHtml(report.pending + report.called)} are still in progress.</p>
+    </section>
+
+    <section>
+      <h2>Status breakdown</h2>
+      <table>
+        <thead>
+          <tr><th>Status</th><th>Students</th></tr>
+        </thead>
+        <tbody>${statusRows}</tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Class breakdown</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Total</th>
+            <th>Screened</th>
+            <th>Urgent referral</th>
+            <th>Needs follow-up</th>
+            <th>Not present</th>
+            <th>Pending</th>
+          </tr>
+        </thead>
+        <tbody>${classRows}</tbody>
+      </table>
+    </section>
+  </body>
+</html>`);
+    reportWindow.document.close();
+    reportWindow.focus();
+    window.setTimeout(() => {
+      reportWindow.print();
+    }, 250);
   }
 
   function canEdit() {
