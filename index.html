@@ -20,6 +20,7 @@
     <main>
       <nav class="tabs" aria-label="Planner sections">
         <button class="tab-button active" type="button" data-tab="preview">Preview</button>
+        <button class="tab-button" type="button" data-tab="reports">Reports</button>
         <button class="tab-button" type="button" data-tab="students">Students</button>
         <button class="tab-button" type="button" data-tab="classes">Classes</button>
         <button class="tab-button" type="button" data-tab="settings">Settings</button>
@@ -36,6 +37,42 @@
           </div>
           <div class="timeline" aria-label="Class schedule timeline">
             <div id="timelineBlocks"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="reports" aria-labelledby="reportsTitle">
+        <section class="band reports-band">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Status reports</p>
+              <h2 id="reportsTitle">Track screening progress, urgent referrals, and follow-up needs.</h2>
+              <p class="settings-note">Students previously marked as Skipped are treated as urgent referrals that need a doctor visit.</p>
+            </div>
+          </div>
+
+          <p id="reportsLocked" class="settings-note">Sign in as an organizer to view student status reports.</p>
+
+          <div id="reportsContent" hidden>
+            <section id="reportMetrics" class="metric-strip" aria-label="Report summary"></section>
+            <div id="reportSummary" class="report-summary"></div>
+            <div id="reportStatusBars" class="report-bars"></div>
+            <div class="table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Total</th>
+                    <th>Screened</th>
+                    <th>Urgent referral</th>
+                    <th>Needs follow-up</th>
+                    <th>Not present</th>
+                    <th>Pending</th>
+                  </tr>
+                </thead>
+                <tbody id="reportClassBody"></tbody>
+              </table>
+            </div>
           </div>
         </section>
       </section>

@@ -13,7 +13,10 @@
   };
   const FIREBASE_SCHEDULE_PATH = "schedule";
   const FIREBASE_STUDENTS_PATH = "students";
-  const STUDENT_STATUSES = ["Pending", "Called", "Completed", "Not present", "Skipped", "Needs follow-up"];
+  const STUDENT_STATUSES = ["Pending", "Called", "Completed", "Not present", "Urgent referral", "Needs follow-up"];
+  const STUDENT_STATUS_ALIASES = {
+    skipped: "Urgent referral",
+  };
   const BASE_GLOBAL = {
     checkupDate: new Date().toISOString().slice(0, 10),
     startTime: "09:00",
@@ -83,6 +86,12 @@
       "organizerPassword",
       "organizerStatus",
       "plannerImportInput",
+      "reportClassBody",
+      "reportMetrics",
+      "reportStatusBars",
+      "reportSummary",
+      "reportsContent",
+      "reportsLocked",
       "reflowBtn",
       "resetBtn",
       "studentClassFilter",
@@ -378,6 +387,7 @@
     renderMetrics();
     renderClassConfig();
     renderTimeline();
+    renderReports();
     renderStudentFilters();
     renderStudents();
     renderOrganizerAccess();
@@ -471,6 +481,83 @@
     elements.timelineBlocks.innerHTML = blocks || `<p class="small-text">No classes are enabled yet.</p>`;
   }
 
+  function renderReports() {
+    if (!canEdit()) {
+      elements.reportsLocked.hidden = false;
+      elements.reportsContent.hidden = true;
+      elements.reportMetrics.innerHTML = "";
+      elements.reportSummary.innerHTML = "";
+      elements.reportStatusBars.innerHTML = "";
+      elements.reportClassBody.innerHTML = "";
+      return;
+    }
+
+    elements.reportsLocked.hidden = true;
+    elements.reportsContent.hidden = false;
+
+    const total = students.length;
+    const urgent = countStudentsByStatus("Urgent referral");
+    const completed = countStudentsByStatus("Completed");
+    const followUp = countStudentsByStatus("Needs follow-up");
+    const notPresent = countStudentsByStatus("Not present");
+    const pending = countStudentsByStatus("Pending");
+    const called = countStudentsByStatus("Called");
+    const screened = students.filter((student) => isScreenedStatus(student.status)).length;
+    const progress = total ? Math.round((screened / total) * 100) : 0;
+
+    const metrics = [
+      ["Registered", total],
+      ["Screened", screened],
+      ["Urgent referral", urgent],
+      ["Needs follow-up", followUp],
+      ["Not present", notPresent],
+      ["Progress", `${progress}%`],
+    ];
+
+    elements.reportMetrics.innerHTML = metrics
+      .map(([label, value]) => `<div class="metric"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`)
+      .join("");
+
+    elements.reportSummary.innerHTML = `
+      <div class="report-card">
+        <strong>${escapeHtml(screened)} of ${escapeHtml(total)} students have been screened.</strong>
+        <p>${escapeHtml(urgent)} need urgent dental care, ${escapeHtml(followUp)} need follow-up, ${escapeHtml(notPresent)} were not present, and ${escapeHtml(pending + called)} are still in progress.</p>
+      </div>
+    `;
+
+    const reportStatuses = ["Completed", "Urgent referral", "Needs follow-up", "Not present", "Pending", "Called"];
+    elements.reportStatusBars.innerHTML = reportStatuses.map((status) => {
+      const count = countStudentsByStatus(status);
+      const width = total ? Math.max(6, Math.round((count / total) * 100)) : 0;
+      return `
+        <div class="report-bar-row">
+          <span class="status-pill ${statusToClass(status)}">${escapeHtml(status)}</span>
+          <div class="report-bar-track"><div class="report-bar-fill ${statusToClass(status)}" style="width:${width}%"></div></div>
+          <strong>${escapeHtml(count)}</strong>
+        </div>
+      `;
+    }).join("");
+
+    const classGroups = groupStudentsByClass();
+    elements.reportClassBody.innerHTML = [...classGroups.entries()]
+      .sort(([a], [b]) => compareClassNames(a, b))
+      .map(([className, classStudents]) => {
+        const classScreened = classStudents.filter((student) => isScreenedStatus(student.status)).length;
+        return `
+          <tr>
+            <td data-label="Class">${escapeHtml(className)}</td>
+            <td data-label="Total">${classStudents.length}</td>
+            <td data-label="Screened">${classScreened}</td>
+            <td data-label="Urgent referral">${classStudents.filter((student) => student.status === "Urgent referral").length}</td>
+            <td data-label="Needs follow-up">${classStudents.filter((student) => student.status === "Needs follow-up").length}</td>
+            <td data-label="Not present">${classStudents.filter((student) => student.status === "Not present").length}</td>
+            <td data-label="Pending">${classStudents.filter((student) => student.status === "Pending" || student.status === "Called").length}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
   function renderOrganizerAccess() {
     const unlocked = canEdit();
 
@@ -550,12 +637,12 @@
     elements.studentList.innerHTML = [...groups.entries()]
       .sort(([a], [b]) => compareClassNames(a, b))
       .map(([className, classStudents]) => {
-        const completedCount = classStudents.filter((student) => student.status === "Completed").length;
+        const completedCount = classStudents.filter((student) => isScreenedStatus(student.status)).length;
         return `
           <section class="student-class-group">
             <div class="student-class-heading">
               <h3>${escapeHtml(className)}</h3>
-              <span>${completedCount}/${classStudents.length} completed</span>
+              <span>${completedCount}/${classStudents.length} screened</span>
             </div>
             <div class="student-cards">
               ${classStudents.sort(compareStudents).map(renderStudentCard).join("")}
@@ -596,6 +683,7 @@
       const records = Array.isArray(value) ? value : Object.values(value);
       students = records.map(normalizeStudentRecord).sort(compareStudents);
       renderStudentFilters();
+      renderReports();
       renderStudents();
     }, (error) => {
       console.warn("Firebase students could not be loaded.", error);
@@ -757,6 +845,7 @@
     if (!student || !studentsRef) return;
 
     student.status = status;
+    renderReports();
     renderStudents();
 
     studentsRef.child(id).update({
@@ -864,6 +953,23 @@
       || a.lastName.localeCompare(b.lastName)
       || a.firstName.localeCompare(b.firstName)
       || a.fullName.localeCompare(b.fullName);
+  }
+
+  function groupStudentsByClass() {
+    return students.reduce((grouped, student) => {
+      const className = student.classLevel || "Unassigned";
+      if (!grouped.has(className)) grouped.set(className, []);
+      grouped.get(className).push(student);
+      return grouped;
+    }, new Map());
+  }
+
+  function countStudentsByStatus(status) {
+    return students.filter((student) => student.status === status).length;
+  }
+
+  function isScreenedStatus(status) {
+    return ["Completed", "Urgent referral", "Needs follow-up"].includes(status);
   }
 
   function canEdit() {
@@ -1258,7 +1364,9 @@
 
   function normalizeStudentStatus(value) {
     const cleaned = normalizeSpace(value);
-    return STUDENT_STATUSES.find((status) => status.toLowerCase() === cleaned.toLowerCase()) || "Pending";
+    const alias = STUDENT_STATUS_ALIASES[cleaned.toLowerCase()];
+    const normalized = alias || cleaned;
+    return STUDENT_STATUSES.find((status) => status.toLowerCase() === normalized.toLowerCase()) || "Pending";
   }
 
   function setImportHelp(message) {

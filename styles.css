@@ -180,7 +180,7 @@ main {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -188,6 +188,8 @@ main {
   border: 1px solid var(--line);
   background: #fff;
   color: var(--ink);
+  line-height: 1.1;
+  white-space: normal;
 }
 
 .tab-button.active {
@@ -346,6 +348,10 @@ table {
   width: 100%;
   min-width: 880px;
   border-collapse: collapse;
+}
+
+.report-table {
+  min-width: 720px;
 }
 
 th,
@@ -602,6 +608,7 @@ tbody tr:last-child td {
 }
 
 .status-not-present,
+.status-urgent-referral,
 .status-skipped {
   background: var(--coral-soft);
   color: #a32f2f;
@@ -610,6 +617,70 @@ tbody tr:last-child td {
 .status-needs-follow-up {
   background: #fff4cf;
   color: #765500;
+}
+
+.report-summary,
+.report-bars {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.report-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--mist);
+  padding: 14px;
+}
+
+.report-card p {
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.report-bar-row {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-bar-track {
+  height: 12px;
+  border-radius: 999px;
+  background: #edf1ef;
+  overflow: hidden;
+}
+
+.report-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--teal);
+}
+
+.report-bar-fill.status-completed {
+  background: #6a9f39;
+}
+
+.report-bar-fill.status-urgent-referral,
+.report-bar-fill.status-skipped {
+  background: var(--coral);
+}
+
+.report-bar-fill.status-needs-follow-up {
+  background: var(--yellow);
+}
+
+.report-bar-fill.status-not-present {
+  background: #9f6b6b;
+}
+
+.report-bar-fill.status-called {
+  background: #4f8fd8;
+}
+
+.report-bar-fill.status-pending {
+  background: var(--teal);
 }
 
 .empty-state {
@@ -705,6 +776,11 @@ dialog::backdrop {
 
   .student-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-bar-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .schedule-layout {
@@ -855,6 +931,10 @@ dialog::backdrop {
   .student-cards {
     grid-template-columns: 1fr;
     padding: 10px;
+  }
+
+  .report-table {
+    min-width: 0;
   }
 
   .student-class-heading,
